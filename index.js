@@ -1,6 +1,7 @@
 const http = require('http');
 const EventEmitter = require('events');
 const setupLogger = require('./logger');
+const OrderHandler = require('./orderHandler');
 
 class AppServer extends EventEmitter {
     constructor() {
@@ -48,6 +49,21 @@ app.on('server:stopped', () => {
 const PORT = 3000;
 app.start(PORT);
 
+// ===== Задание 3: Асинхронная обработка заказов =====
+const orderHandler = new OrderHandler();
+
+orderHandler.on('order:received', (orderId) => {
+    console.log(`📦 Заказ ${orderId} получен, начинаем обработку...`);
+});
+
+orderHandler.on('order:processed', (orderId) => {
+    console.log(`✅ Заказ ${orderId} успешно обработан!`);
+});
+
+// Запускаем обработку заказа №123 с задержкой 2 секунды
+orderHandler.processOrder(123, 2000);
+
+// ===== Эмуляция остановки сервера через 10 секунд =====
 setTimeout(() => {
     app.stop();
 }, 10000);
