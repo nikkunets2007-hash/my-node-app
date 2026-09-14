@@ -5,16 +5,21 @@ class OrderHandler extends EventEmitter {
         super();
     }
 
-    // Метод обработки заказа с задержкой
-    processOrder(orderId, delay = 2000) {
-        // Генерируем событие о получении заказа
-        this.emit('order:received', orderId);
+    // 5.2. Метод processOrder(orderId)
+    processOrder(orderId) {
+        // Генерирует событие 'order:start' с orderId
+        this.emit('order:start', orderId);
 
-        // Эмулируем асинхронную обработку через setTimeout
+        // Через 2 секунды генерирует 'order:processing'
         setTimeout(() => {
-            // Генерируем событие о завершении обработки
-            this.emit('order:processed', orderId);
-        }, delay);
+            this.emit('order:processing', orderId, 'Идёт обработка...');
+        }, 2000);
+
+        // Ещё через 2 секунды генерирует 'order:complete' с orderId и случайной суммой от 100 до 1000
+        setTimeout(() => {
+            const sum = Math.floor(Math.random() * 901) + 100; // от 100 до 1000
+            this.emit('order:complete', orderId, sum);
+        }, 4000);
     }
 }
 
