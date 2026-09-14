@@ -11,3 +11,10 @@ perf-test-data/
 data/ 
 data-promises/ 
 data-hybrid/ 
+test-data/ 
+test-data-promises/ 
+test-data-hybrid/ 
+perf-test-data/ 
+data/ 
+data-promises/ 
+data-hybrid/ 
