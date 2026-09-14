@@ -5,16 +5,17 @@ class UserTracker extends EventEmitter {
         super();
     }
 
-    // Метод для отслеживания действия пользователя
-    trackAction(userId, action, details = {}) {
+    // 7.2. Метод trackAction(userId, action, metadata)
+    trackAction(userId, action, metadata) {
         const eventData = {
             userId: userId,
             action: action,
             timestamp: new Date().toISOString(),
-            details: details
+            metadata: metadata,
+            id: Math.random().toString(36).substr(2, 9) // уникальный ID события
         };
 
-        // Генерируем кастомное событие 'user:action' со сложным объектом
+        // Генерируем событие 'user:action'
         this.emit('user:action', eventData);
     }
 }

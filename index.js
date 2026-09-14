@@ -99,18 +99,18 @@ app.start(PORT);
 // ===== Задание 5: Кастомное событие user:action =====
 const userTracker = new UserTracker();
 
+// 7.3. Обработчик с красивым форматированием
 userTracker.on('user:action', (data) => {
-    console.log('👤 Действие пользователя:');
-    console.log(`   ID: ${data.userId}`);
-    console.log(`   Действие: ${data.action}`);
+    console.log(`\n👤 Пользователь ${data.userId} совершил действие "${data.action}"`);
     console.log(`   Время: ${data.timestamp}`);
-    console.log(`   Детали:`, data.details);
+    console.log(`   ID события: ${data.id}`);
+    console.log(`   Доп. данные: ${JSON.stringify(data.metadata)}`);
 });
 
-// Эмулируем действия пользователей
+// 7.4. Тестовые вызовы trackAction с разными параметрами
 userTracker.trackAction(1, 'login', { ip: '192.168.1.1', browser: 'Chrome' });
-userTracker.trackAction(1, 'view_page', { url: '/order/42' });
-userTracker.trackAction(2, 'logout', { reason: 'timeout' });
+userTracker.trackAction(2, 'view_page', { url: '/order/42', duration: 15 });
+userTracker.trackAction(3, 'logout', { reason: 'timeout' });
 
 // ===== Авто-остановка через 20 секунд =====
 setTimeout(() => {
