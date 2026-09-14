@@ -2,6 +2,7 @@ const http = require('http');
 const EventEmitter = require('events');
 const setupLogger = require('./logger');
 const OrderHandler = require('./orderHandler');
+const UserTracker = require('./userTracker');
 
 // ===== Функция вычисления числа Пи (5.3) =====
 function calculatePi() {
@@ -94,6 +95,22 @@ app.on('server:stopped', () => {
 
 const PORT = 3000;
 app.start(PORT);
+
+// ===== Задание 5: Кастомное событие user:action =====
+const userTracker = new UserTracker();
+
+userTracker.on('user:action', (data) => {
+    console.log('👤 Действие пользователя:');
+    console.log(`   ID: ${data.userId}`);
+    console.log(`   Действие: ${data.action}`);
+    console.log(`   Время: ${data.timestamp}`);
+    console.log(`   Детали:`, data.details);
+});
+
+// Эмулируем действия пользователей
+userTracker.trackAction(1, 'login', { ip: '192.168.1.1', browser: 'Chrome' });
+userTracker.trackAction(1, 'view_page', { url: '/order/42' });
+userTracker.trackAction(2, 'logout', { reason: 'timeout' });
 
 // ===== Авто-остановка через 20 секунд =====
 setTimeout(() => {
