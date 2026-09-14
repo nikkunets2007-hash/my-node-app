@@ -1,3 +1,13 @@
 node_modules/ 
 .env 
 .DS_Store 
+logs.txt 
+*.txt 
+!requirements.txt 
+test-data/ 
+test-data-promises/ 
+test-data-hybrid/ 
+perf-test-data/ 
+data/ 
+data-promises/ 
+data-hybrid/ 
