@@ -1,0 +1,16 @@
+{
+  "name": "laba_15_koa_server_kunets",
+  "version": "1.0.0",
+  "description": "Лабораторная работа 15 - Koa.js сервер, группа 401, Кунец Никита",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "Кунец Никита",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "koa": "^3.2.1"
+  }
+}
