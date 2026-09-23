@@ -2,6 +2,7 @@
 // Задание 1: простой HTTP-сервер на Koa.js
 // Задание 2: REST API для пользователей (GET, POST, PUT, DELETE)
 // Задание 3: middleware — логирование, обработка ошибок, авторизация
+// Задание 4: API для студентов (CRUD + фильтрация по группе)
 // Студент: Кунец Никита, группа 401
 
 const Koa = require('koa');
@@ -16,6 +17,14 @@ let users = [
   { id: 2, name: 'Челей Максим', group: '401' },
 ];
 let nextId = 3;
+
+// ===== Хранилище студентов (в памяти) =====
+let students = [
+  { id: 1, name: 'Анна', group: 'ББМО-01-23', course: 2 },
+  { id: 2, name: 'Иван', group: 'ББМО-01-23', course: 2 },
+  { id: 3, name: 'Ольга', group: 'ББМО-02-23', course: 1 },
+];
+let nextStudentId = 4;
 
 // ===== Вспомогательная функция: парсинг JSON-тела =====
 function parseBody(ctx) {
@@ -93,9 +102,10 @@ app.use(async (ctx, next) => {
 // ===== Главный роутер =====
 app.use(async (ctx) => {
   const { method, url } = ctx;
+  const path = url.split('?')[0]; // путь без query-параметров
 
   // ---------- Задание 1: главная страница ----------
-  if (method === 'GET' && url === '/') {
+  if (method === 'GET' && path === '/') {
     const now = new Date().toLocaleString('ru-RU');
     ctx.type = 'text/html; charset=utf-8';
     ctx.body = `
@@ -110,7 +120,7 @@ app.use(async (ctx) => {
           h1 { color: #2c3e50; }
           p { font-size: 18px; color: #333; }
           .label { color: #7f8c8d; font-size: 14px; }
-          a { color: #3498db; }
+          a { color: #3498db; display: block; margin: 8px 0; }
         </style>
       </head>
       <body>
@@ -120,9 +130,11 @@ app.use(async (ctx) => {
           <p><span class="label">Студент:</span> Кунец Никита</p>
           <p><span class="label">Дата и время:</span> ${now}</p>
           <p>Привет! Это HTTP-сервер на Koa.js.</p>
-          <p><a href="/api/users">→ GET /api/users</a></p>
-          <p><a href="/protected">→ GET /protected (нужна авторизация)</a></p>
-          <p><a href="/error">→ GET /error (тест ошибки)</a></p>
+          <a href="/api/users">→ GET /api/users</a>
+          <a href="/students">→ GET /students</a>
+          <a href="/students?group=ББМО-01-23">→ GET /students?group=ББМО-01-23</a>
+          <a href="/protected">→ GET /protected (нужна авторизация)</a>
+          <a href="/error">→ GET /error (тест ошибки)</a>
         </div>
       </body>
       </html>
@@ -130,31 +142,158 @@ app.use(async (ctx) => {
     return;
   }
 
-  // ---------- Задание 3: /protected — только с авторизацией ----------
-  if (method === 'GET' && url === '/protected') {
+  // ---------- Задание 3: /protected ----------
+  if (method === 'GET' && path === '/protected') {
     ctx.type = 'application/json; charset=utf-8';
-    ctx.body = {
-      message: 'Доступ разрешён',
-      user: 'Кунец Никита',
-      group: GROUP,
-    };
+    ctx.body = { message: 'Доступ разрешён', user: 'Кунец Никита', group: GROUP };
     return;
   }
 
-  // ---------- Задание 3: /error — намеренная ошибка ----------
-  if (method === 'GET' && url === '/error') {
+  // ---------- Задание 3: /error ----------
+  if (method === 'GET' && path === '/error') {
     throw new Error('Это тестовая ошибка для проверки middleware');
   }
 
-  // ---------- Задание 2: GET /api/users — список всех ----------
-  if (method === 'GET' && url === '/api/users') {
+  // ================================================================
+  // ЗАДАНИЕ 4: API для студентов
+  // ================================================================
+
+  // ---------- GET /students — список всех + фильтр по group ----------
+  if (method === 'GET' && path === '/students') {
+    const query = new URL(url, `http://localhost:${PORT}`).searchParams;
+    const groupFilter = query.get('group');
+
+    let result = students;
+    if (groupFilter) {
+      result = students.filter((s) => s.group === groupFilter);
+    }
+
+    ctx.type = 'application/json; charset=utf-8';
+    ctx.body = result;
+    return;
+  }
+
+  // ---------- GET /students/:id — один студент ----------
+  const getStudentMatch = path.match(/^\/students\/(\d+)$/);
+  if (method === 'GET' && getStudentMatch) {
+    const id = parseInt(getStudentMatch[1], 10);
+    const student = students.find((s) => s.id === id);
+    if (!student) {
+      ctx.status = 404;
+      ctx.body = { error: `Студент с id=${id} не найден` };
+      return;
+    }
+    ctx.type = 'application/json; charset=utf-8';
+    ctx.body = student;
+    return;
+  }
+
+  // ---------- POST /students — создать ----------
+  if (method === 'POST' && path === '/students') {
+    let body;
+    try {
+      body = await parseBody(ctx);
+    } catch {
+      ctx.status = 400;
+      ctx.body = { error: 'Invalid JSON' };
+      return;
+    }
+
+    // Валидация
+    if (!body.name || !body.group || body.course === undefined) {
+      ctx.status = 400;
+      ctx.body = { error: 'Поля name, group и course обязательны' };
+      return;
+    }
+
+    if (typeof body.course !== 'number' || body.course < 1 || body.course > 6) {
+      ctx.status = 400;
+      ctx.body = { error: 'Поле course должно быть числом от 1 до 6' };
+      return;
+    }
+
+    const newStudent = {
+      id: nextStudentId++,
+      name: body.name,
+      group: body.group,
+      course: body.course,
+    };
+    students.push(newStudent);
+    ctx.status = 201;
+    ctx.type = 'application/json; charset=utf-8';
+    ctx.body = newStudent;
+    return;
+  }
+
+  // ---------- PUT /students/:id — обновить ----------
+  const putStudentMatch = path.match(/^\/students\/(\d+)$/);
+  if (method === 'PUT' && putStudentMatch) {
+    const id = parseInt(putStudentMatch[1], 10);
+    const student = students.find((s) => s.id === id);
+
+    if (!student) {
+      ctx.status = 404;
+      ctx.body = { error: `Студент с id=${id} не найден` };
+      return;
+    }
+
+    let body;
+    try {
+      body = await parseBody(ctx);
+    } catch {
+      ctx.status = 400;
+      ctx.body = { error: 'Invalid JSON' };
+      return;
+    }
+
+    // Обновляем только переданные поля
+    if (body.name !== undefined) student.name = body.name;
+    if (body.group !== undefined) student.group = body.group;
+    if (body.course !== undefined) {
+      if (typeof body.course !== 'number' || body.course < 1 || body.course > 6) {
+        ctx.status = 400;
+        ctx.body = { error: 'Поле course должно быть числом от 1 до 6' };
+        return;
+      }
+      student.course = body.course;
+    }
+
+    ctx.type = 'application/json; charset=utf-8';
+    ctx.body = student;
+    return;
+  }
+
+  // ---------- DELETE /students/:id — удалить ----------
+  const delStudentMatch = path.match(/^\/students\/(\d+)$/);
+  if (method === 'DELETE' && delStudentMatch) {
+    const id = parseInt(delStudentMatch[1], 10);
+    const index = students.findIndex((s) => s.id === id);
+
+    if (index === -1) {
+      ctx.status = 404;
+      ctx.body = { error: `Студент с id=${id} не найден` };
+      return;
+    }
+
+    const deleted = students.splice(index, 1)[0];
+    ctx.type = 'application/json; charset=utf-8';
+    ctx.body = { message: `Студент с id=${id} удалён`, student: deleted };
+    return;
+  }
+
+  // ================================================================
+  // ЗАДАНИЕ 2: API для пользователей
+  // ================================================================
+
+  // ---------- GET /api/users — список всех ----------
+  if (method === 'GET' && path === '/api/users') {
     ctx.type = 'application/json; charset=utf-8';
     ctx.body = users;
     return;
   }
 
-  // ---------- Задание 2: GET /api/users/:id — один пользователь ----------
-  const getMatch = url.match(/^\/api\/users\/(\d+)$/);
+  // ---------- GET /api/users/:id ----------
+  const getMatch = path.match(/^\/api\/users\/(\d+)$/);
   if (method === 'GET' && getMatch) {
     const id = parseInt(getMatch[1], 10);
     const user = users.find((u) => u.id === id);
@@ -168,8 +307,8 @@ app.use(async (ctx) => {
     return;
   }
 
-  // ---------- Задание 2: POST /api/users — создать ----------
-  if (method === 'POST' && url === '/api/users') {
+  // ---------- POST /api/users ----------
+  if (method === 'POST' && path === '/api/users') {
     let body;
     try {
       body = await parseBody(ctx);
@@ -193,8 +332,8 @@ app.use(async (ctx) => {
     return;
   }
 
-  // ---------- Задание 2: PUT /api/users/:id — обновить ----------
-  const putMatch = url.match(/^\/api\/users\/(\d+)$/);
+  // ---------- PUT /api/users/:id ----------
+  const putMatch = path.match(/^\/api\/users\/(\d+)$/);
   if (method === 'PUT' && putMatch) {
     const id = parseInt(putMatch[1], 10);
     const user = users.find((u) => u.id === id);
@@ -227,8 +366,8 @@ app.use(async (ctx) => {
     return;
   }
 
-  // ---------- Задание 2: DELETE /api/users/:id — удалить ----------
-  const delMatch = url.match(/^\/api\/users\/(\d+)$/);
+  // ---------- DELETE /api/users/:id ----------
+  const delMatch = path.match(/^\/api\/users\/(\d+)$/);
   if (method === 'DELETE' && delMatch) {
     const id = parseInt(delMatch[1], 10);
     const index = users.findIndex((u) => u.id === id);
@@ -253,5 +392,5 @@ app.use(async (ctx) => {
 app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log(`Открой: http://localhost:${PORT}`);
-  console.log(`API: http://localhost:${PORT}/api/users`);
+  console.log(`Студенты: http://localhost:${PORT}/students`);
 });
