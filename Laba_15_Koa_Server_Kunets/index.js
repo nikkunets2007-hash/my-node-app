@@ -3,6 +3,7 @@
 // Задание 2: REST API для пользователей (GET, POST, PUT, DELETE)
 // Задание 3: middleware — логирование, обработка ошибок, авторизация
 // Задание 4: API для студентов (CRUD + фильтрация по группе)
+// Задание 5: пагинация, сортировка, поиск, автогенерация 50 студентов
 // Студент: Кунец Никита, группа 401
 
 const Koa = require('koa');
@@ -18,13 +19,35 @@ let users = [
 ];
 let nextId = 3;
 
-// ===== Хранилище студентов (в памяти) =====
-let students = [
-  { id: 1, name: 'Анна', group: 'ББМО-01-23', course: 2 },
-  { id: 2, name: 'Иван', group: 'ББМО-01-23', course: 2 },
-  { id: 3, name: 'Ольга', group: 'ББМО-02-23', course: 1 },
-];
-let nextStudentId = 4;
+// ===== ЗАДАНИЕ 5: Автогенерация 50 студентов =====
+const FIRST_NAMES_M = ['Александр', 'Дмитрий', 'Максим', 'Иван', 'Никита', 'Артём', 'Алексей', 'Сергей', 'Андрей', 'Михаил'];
+const FIRST_NAMES_F = ['Анна', 'Мария', 'Ольга', 'Екатерина', 'Дарья', 'Елена', 'Виктория', 'Алина', 'Полина', 'Ксения'];
+const LAST_NAMES_M = ['Иванов', 'Петров', 'Сидоров', 'Кузнецов', 'Смирнов', 'Попов', 'Соколов', 'Лебедев', 'Козлов', 'Новиков'];
+const LAST_NAMES_F = ['Иванова', 'Петрова', 'Сидорова', 'Кузнецова', 'Смирнова', 'Попова', 'Соколова', 'Лебедева', 'Козлова', 'Новикова'];
+const GROUPS = ['ББМО-01-23', 'ББМО-02-23', 'ББМО-03-23', 'ИС-21', 'ИС-22', 'ПИ-21'];
+
+function randomItem(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function generateStudents(count) {
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    const isMale = Math.random() > 0.5;
+    const firstName = isMale ? randomItem(FIRST_NAMES_M) : randomItem(FIRST_NAMES_F);
+    const lastName = isMale ? randomItem(LAST_NAMES_M) : randomItem(LAST_NAMES_F);
+    result.push({
+      id: i + 1,
+      name: `${lastName} ${firstName}`,
+      group: randomItem(GROUPS),
+      course: Math.floor(Math.random() * 4) + 1,
+    });
+  }
+  return result;
+}
+
+let students = generateStudents(50);
+let nextStudentId = 51;
 
 // ===== Вспомогательная функция: парсинг JSON-тела =====
 function parseBody(ctx) {
@@ -102,7 +125,7 @@ app.use(async (ctx, next) => {
 // ===== Главный роутер =====
 app.use(async (ctx) => {
   const { method, url } = ctx;
-  const path = url.split('?')[0]; // путь без query-параметров
+  const path = url.split('?')[0];
 
   // ---------- Задание 1: главная страница ----------
   if (method === 'GET' && path === '/') {
@@ -131,8 +154,10 @@ app.use(async (ctx) => {
           <p><span class="label">Дата и время:</span> ${now}</p>
           <p>Привет! Это HTTP-сервер на Koa.js.</p>
           <a href="/api/users">→ GET /api/users</a>
-          <a href="/students">→ GET /students</a>
-          <a href="/students?group=ББМО-01-23">→ GET /students?group=ББМО-01-23</a>
+          <a href="/students?limit=5">→ GET /students?limit=5</a>
+          <a href="/students?limit=5&offset=10">→ GET /students?limit=5&offset=10</a>
+          <a href="/students?sort=name&limit=5">→ GET /students?sort=name&limit=5</a>
+          <a href="/students?search=Ан&limit=5">→ GET /students?search=Ан&limit=5</a>
           <a href="/protected">→ GET /protected (нужна авторизация)</a>
           <a href="/error">→ GET /error (тест ошибки)</a>
         </div>
@@ -155,21 +180,62 @@ app.use(async (ctx) => {
   }
 
   // ================================================================
-  // ЗАДАНИЕ 4: API для студентов
+  // ЗАДАНИЯ 4-5: API для студентов
   // ================================================================
 
-  // ---------- GET /students — список всех + фильтр по group ----------
+  // ---------- GET /students — пагинация, сортировка, поиск, фильтр ----------
   if (method === 'GET' && path === '/students') {
     const query = new URL(url, `http://localhost:${PORT}`).searchParams;
-    const groupFilter = query.get('group');
 
-    let result = students;
+    let result = [...students];
+
+    // Фильтр по группе
+    const groupFilter = query.get('group');
     if (groupFilter) {
-      result = students.filter((s) => s.group === groupFilter);
+      result = result.filter((s) => s.group === groupFilter);
     }
 
+    // Поиск по имени (регистронезависимый)
+    const search = query.get('search');
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter((s) => s.name.toLowerCase().includes(q));
+    }
+
+    // Сортировка
+    const sort = query.get('sort');
+    if (sort) {
+      const desc = sort.startsWith('-');
+      const field = desc ? sort.slice(1) : sort;
+      if (['name', 'group', 'course', 'id'].includes(field)) {
+        result.sort((a, b) => {
+          let va = a[field];
+          let vb = b[field];
+          if (typeof va === 'string') {
+            va = va.toLowerCase();
+            vb = vb.toLowerCase();
+          }
+          if (va < vb) return desc ? 1 : -1;
+          if (va > vb) return desc ? -1 : 1;
+          return 0;
+        });
+      }
+    }
+
+    // Пагинация
+    const limit = parseInt(query.get('limit'), 10) || 10;
+    const offset = parseInt(query.get('offset'), 10) || 0;
+    const total = result.length;
+    const paged = result.slice(offset, offset + limit);
+
     ctx.type = 'application/json; charset=utf-8';
-    ctx.body = result;
+    ctx.body = {
+      total,
+      limit,
+      offset,
+      count: paged.length,
+      data: paged,
+    };
     return;
   }
 
@@ -199,7 +265,6 @@ app.use(async (ctx) => {
       return;
     }
 
-    // Валидация
     if (!body.name || !body.group || body.course === undefined) {
       ctx.status = 400;
       ctx.body = { error: 'Поля name, group и course обязательны' };
@@ -246,7 +311,6 @@ app.use(async (ctx) => {
       return;
     }
 
-    // Обновляем только переданные поля
     if (body.name !== undefined) student.name = body.name;
     if (body.group !== undefined) student.group = body.group;
     if (body.course !== undefined) {
@@ -285,14 +349,12 @@ app.use(async (ctx) => {
   // ЗАДАНИЕ 2: API для пользователей
   // ================================================================
 
-  // ---------- GET /api/users — список всех ----------
   if (method === 'GET' && path === '/api/users') {
     ctx.type = 'application/json; charset=utf-8';
     ctx.body = users;
     return;
   }
 
-  // ---------- GET /api/users/:id ----------
   const getMatch = path.match(/^\/api\/users\/(\d+)$/);
   if (method === 'GET' && getMatch) {
     const id = parseInt(getMatch[1], 10);
@@ -307,7 +369,6 @@ app.use(async (ctx) => {
     return;
   }
 
-  // ---------- POST /api/users ----------
   if (method === 'POST' && path === '/api/users') {
     let body;
     try {
@@ -332,7 +393,6 @@ app.use(async (ctx) => {
     return;
   }
 
-  // ---------- PUT /api/users/:id ----------
   const putMatch = path.match(/^\/api\/users\/(\d+)$/);
   if (method === 'PUT' && putMatch) {
     const id = parseInt(putMatch[1], 10);
@@ -366,7 +426,6 @@ app.use(async (ctx) => {
     return;
   }
 
-  // ---------- DELETE /api/users/:id ----------
   const delMatch = path.match(/^\/api\/users\/(\d+)$/);
   if (method === 'DELETE' && delMatch) {
     const id = parseInt(delMatch[1], 10);
@@ -384,7 +443,7 @@ app.use(async (ctx) => {
     return;
   }
 
-  // ---------- 404 для всего остального ----------
+  // ---------- 404 ----------
   ctx.status = 404;
   ctx.body = { error: 'Not found' };
 });
@@ -392,5 +451,5 @@ app.use(async (ctx) => {
 app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log(`Открой: http://localhost:${PORT}`);
-  console.log(`Студенты: http://localhost:${PORT}/students`);
+  console.log(`Студенты (50 шт): http://localhost:${PORT}/students`);
 });
