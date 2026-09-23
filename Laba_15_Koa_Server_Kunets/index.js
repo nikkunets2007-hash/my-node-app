@@ -1,6 +1,7 @@
 // Лабораторная работа №15
 // Задание 1: простой HTTP-сервер на Koa.js
 // Задание 2: REST API для пользователей (GET, POST, PUT, DELETE)
+// Задание 3: middleware — логирование, обработка ошибок, авторизация
 // Студент: Кунец Никита, группа 401
 
 const Koa = require('koa');
@@ -33,17 +34,55 @@ function parseBody(ctx) {
   });
 }
 
-// ===== Middleware: логирование запросов =====
+// ===== ЗАДАНИЕ 3.1: Middleware логирования =====
 app.use(async (ctx, next) => {
-  console.log(`${ctx.method} ${ctx.url}`);
+  const start = Date.now();
+  const time = new Date().toLocaleString('ru-RU', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+
+  await next();
+
+  const ms = Date.now() - start;
+  console.log(`[${time}] ${ctx.method} ${ctx.url} - ${ms}ms`);
+});
+
+// ===== ЗАДАНИЕ 3.2: Middleware обработки ошибок =====
+app.use(async (ctx, next) => {
+  try {
+    await next();
+  } catch (err) {
+    const status = err.status || 500;
+    ctx.status = status;
+    ctx.type = 'application/json; charset=utf-8';
+    ctx.body = {
+      error: status === 500 ? 'Внутренняя ошибка сервера' : err.message,
+      status,
+    };
+    console.error(`Ошибка: ${err.message}`);
+  }
+});
+
+// ===== ЗАДАНИЕ 3.3: Middleware авторизации =====
+app.use(async (ctx, next) => {
+  if (ctx.url === '/protected') {
+    const auth = ctx.headers['authorization'];
+    if (!auth) {
+      ctx.status = 401;
+      ctx.type = 'application/json; charset=utf-8';
+      ctx.body = { error: 'Требуется авторизация', status: 401 };
+      return;
+    }
+  }
   await next();
 });
 
-// ===== Middleware: CORS =====
+// ===== Middleware CORS =====
 app.use(async (ctx, next) => {
   ctx.set('Access-Control-Allow-Origin', '*');
   ctx.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  ctx.set('Access-Control-Allow-Headers', 'Content-Type');
+  ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (ctx.method === 'OPTIONS') {
     ctx.status = 204;
     return;
@@ -82,11 +121,29 @@ app.use(async (ctx) => {
           <p><span class="label">Дата и время:</span> ${now}</p>
           <p>Привет! Это HTTP-сервер на Koa.js.</p>
           <p><a href="/api/users">→ GET /api/users</a></p>
+          <p><a href="/protected">→ GET /protected (нужна авторизация)</a></p>
+          <p><a href="/error">→ GET /error (тест ошибки)</a></p>
         </div>
       </body>
       </html>
     `;
     return;
+  }
+
+  // ---------- Задание 3: /protected — только с авторизацией ----------
+  if (method === 'GET' && url === '/protected') {
+    ctx.type = 'application/json; charset=utf-8';
+    ctx.body = {
+      message: 'Доступ разрешён',
+      user: 'Кунец Никита',
+      group: GROUP,
+    };
+    return;
+  }
+
+  // ---------- Задание 3: /error — намеренная ошибка ----------
+  if (method === 'GET' && url === '/error') {
+    throw new Error('Это тестовая ошибка для проверки middleware');
   }
 
   // ---------- Задание 2: GET /api/users — список всех ----------
