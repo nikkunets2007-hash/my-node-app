@@ -1,0 +1,14 @@
+﻿{
+  "name": "laba_18_os_kunets",
+  "version": "1.0.0",
+  "description": "Лабораторная работа 18 - модуль os, группа 401, Кунец Никита",
+  "main": "os-info.js",
+  "scripts": {
+    "info": "node os-info.js",
+    "resources": "node os-resources.js",
+    "network": "node os-network.js",
+    "monitor": "node os-monitor.js"
+  },
+  "author": "Кунец Никита",
+  "license": "ISC"
+}
