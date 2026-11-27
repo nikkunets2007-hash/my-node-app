@@ -1,0 +1,4 @@
+node_modules/
+.env
+*.log
+big_data.csv

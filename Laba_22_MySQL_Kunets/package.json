@@ -1,0 +1,22 @@
+{
+  "name": "laba_22_mysql_kunets",
+  "version": "1.0.0",
+  "description": "Лабораторная работа 22 - MySQL/MariaDB, группа 401, Кунец Никита",
+  "main": "mysql-connect.js",
+  "scripts": {
+    "task1": "node mysql-connect.js",
+    "task2": "node mysql-crud.js",
+    "task3": "node mysql-errors.js",
+    "task4": "node mysql-dao.js",
+    "task5": "node mysql-server.js"
+  },
+  "author": "Кунец Никита",
+  "license": "ISC",
+  "dependencies": {
+    "@koa/router": "^15.7.1",
+    "dotenv": "^16.4.5",
+    "koa": "^3.3.0",
+    "koa-bodyparser": "^4.4.1",
+    "mysql2": "^3.11.0"
+  }
+}
