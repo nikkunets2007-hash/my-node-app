@@ -1,0 +1,15 @@
+﻿{
+  "name": "laba_21_streams_kunets",
+  "version": "1.0.0",
+  "description": "Лабораторная работа 21 - потоки (streams), группа 401, Кунец Никита",
+  "main": "stream-readable.js",
+  "scripts": {
+    "task1": "node stream-readable.js",
+    "task2": "node stream-writable.js",
+    "task3": "node stream-pipe.js",
+    "task4": "node stream-transform.js",
+    "task5": "node stream-pipeline.js"
+  },
+  "author": "Кунец Никита",
+  "license": "ISC"
+}

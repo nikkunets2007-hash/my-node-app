@@ -1,0 +1,6 @@
+node_modules/
+*.log
+output*.txt
+students.csv
+errors.log
+input.txt
