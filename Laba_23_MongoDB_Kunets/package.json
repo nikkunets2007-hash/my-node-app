@@ -1,0 +1,19 @@
+{
+  "name": "laba_23_mongodb_kunets",
+  "version": "1.0.0",
+  "description": "Лабораторная работа 23 - MongoDB, группа 401, Кунец Никита",
+  "main": "mongodb-connect.js",
+  "scripts": {
+    "task1": "node mongodb-connect.js",
+    "task2": "node mongodb-crud.js",
+    "task3": "node mongodb-advanced.js",
+    "task4": "node mongodb-transactions.js",
+    "task5": "node mongodb-server.js"
+  },
+  "author": "Кунец Никита",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "mongodb": "^6.22.0"
+  }
+}
