@@ -6,3 +6,4 @@ new-user.json
 bad-user.json
 user-*.json
 more-users.json
+coverage/

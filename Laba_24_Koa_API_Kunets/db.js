@@ -18,7 +18,9 @@ async function connectDB() {
   if (db) return db;
   if (!URI) throw new Error('MONGO_URI не задан в .env');
   console.log('[DEBUG] Подключение к:', URI.replace(/:[^:@]+@/, ':***@'));
-  client = new MongoClient(URI, { serverSelectionTimeoutMS: 15000 });
+  client = new MongoClient(URI, {
+    serverSelectionTimeoutMS: 15000,
+  });
   await client.connect();
   console.log('[DEBUG] client.connect() завершён');
   db = client.db(DB_NAME);
