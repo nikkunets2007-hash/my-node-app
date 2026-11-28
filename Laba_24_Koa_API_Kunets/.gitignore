@@ -1,0 +1,8 @@
+node_modules/
+.env
+*.log
+*.json
+new-user.json
+bad-user.json
+user-*.json
+more-users.json
